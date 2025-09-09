@@ -1,7 +1,0 @@
-flask
-langchain
-openai
-faiss-cpu
-python-docx
-PyMuPDF
-beautifulsoup4
