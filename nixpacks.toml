@@ -1,2 +1,2 @@
 [start]
-cmd = "uvicorn app:app"
+cmd = "gunicorn app:app"
