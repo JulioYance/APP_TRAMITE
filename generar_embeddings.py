@@ -1,7 +1,7 @@
 from procesar_documentos import procesar_documentos
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
 
 # Extraer texto de documentos
 texto_total = procesar_documentos("documentos")
@@ -12,6 +12,8 @@ fragmentos = splitter.split_text(texto_total)
 
 # Crear embeddings
 embeddings = OpenAIEmbeddings()
+
+# Crear base vectorial
 vectorstore = FAISS.from_texts(fragmentos, embeddings)
 
 # Guardar la base vectorial
