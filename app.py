@@ -1,11 +1,14 @@
 from flask import Flask, request, jsonify
-from langchain.vectorstores import FAISS
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
+import os
 
 app = Flask(__name__)
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Cargar la base vectorial
-vectorstore = FAISS.load_local("base_vectorial", OpenAIEmbeddings())
+embeddings = OpenAIEmbeddings()
+vectorstore = FAISS.load_local("base_vectorial", embeddings)
 
 @app.route("/preguntar", methods=["POST"])
 def preguntar():
