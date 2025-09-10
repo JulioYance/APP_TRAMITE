@@ -1,10 +1,10 @@
 flask
+gunicorn
+langchain-community
+langchain-openai
+langchain-core
 openai
 faiss-cpu
 python-docx
 PyMuPDF
 beautifulsoup4
-langchain
-langchain-community
-langchain-core
-langchain-openai

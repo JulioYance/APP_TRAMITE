@@ -8,7 +8,11 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Cargar la base vectorial
 embeddings = OpenAIEmbeddings()
-vectorstore = FAISS.load_local("base_vectorial", embeddings)
+vectorstore = FAISS.load_local(
+    "base_vectorial",
+    embeddings,
+    allow_dangerous_deserialization=True
+)
 
 @app.route("/preguntar", methods=["POST"])
 def preguntar():
