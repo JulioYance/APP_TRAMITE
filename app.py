@@ -5,29 +5,38 @@ from langchain_openai import OpenAIEmbeddings
 
 app = Flask(__name__)
 
-# RUTA donde se guardará/cargará el índice
+# Configuración
 INDEX_DIR = "base_vectorial"
 INDEX_NAME = "index"
+INDEX_FILE = os.path.join(INDEX_DIR, f"{INDEX_NAME}.faiss")
 
 # Embeddings
 embeddings = OpenAIEmbeddings()
 
-# Cargar o inicializar FAISS
+# Función robusta para cargar o crear FAISS
 def load_or_create_faiss():
-    index_path = os.path.join(INDEX_DIR, f"{INDEX_NAME}.faiss")
+    try:
+        # Si no existe o está vacío, creamos uno nuevo
+        if not os.path.exists(INDEX_FILE) or os.path.getsize(INDEX_FILE) == 0:
+            os.makedirs(INDEX_DIR, exist_ok=True)
+            print("⚠️ Índice no encontrado o vacío. Creando uno nuevo...")
+            faiss_index = FAISS.from_texts(["Índice inicializado"], embeddings)
+            faiss_index.save_local(INDEX_DIR, index_name=INDEX_NAME)
+            return faiss_index
 
-    # Si no existe, crear un FAISS vacío
-    if not os.path.exists(index_path):
-        os.makedirs(INDEX_DIR, exist_ok=True)
-        print("⚠️ No se encontró el índice. Creando uno nuevo...")
-        # Creamos un FAISS vacío
-        return FAISS.from_texts(["Inicialización del índice"], embeddings)
+        # Intentamos cargar el índice existente
+        print("✅ Cargando índice existente...")
+        return FAISS.load_local(INDEX_DIR, embeddings, index_name=INDEX_NAME, allow_dangerous_deserialization=True)
 
-    # Si existe, cargarlo
-    print("✅ Cargando índice existente...")
-    return FAISS.load_local(INDEX_DIR, embeddings, index_name=INDEX_NAME, allow_dangerous_deserialization=True)
+    except Exception as e:
+        print(f"❌ Error cargando índice: {e}")
+        print("🔄 Creando índice nuevo...")
+        faiss_index = FAISS.from_texts(["Índice reinicializado"], embeddings)
+        faiss_index.save_local(INDEX_DIR, index_name=INDEX_NAME)
+        return faiss_index
 
-# Inicializamos el vectorstore
+
+# Inicializamos FAISS
 vectorstore = load_or_create_faiss()
 
 
@@ -38,7 +47,6 @@ def home():
 
 @app.route("/buscar/<texto>")
 def buscar(texto):
-    """Permite hacer búsqueda en el índice FAISS"""
     docs = vectorstore.similarity_search(texto, k=2)
     resultados = [doc.page_content for doc in docs]
     return jsonify({"query": texto, "resultados": resultados})
