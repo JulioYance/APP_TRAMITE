@@ -4,7 +4,13 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 
 app = Flask(__name__)
+# Tomamos la API Key desde el entorno
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("❌ No se encontró la variable OPENAI_API_KEY. Configúrala antes de ejecutar.")
 
+# Pasamos la API Key explícitamente a OpenAIEmbeddings
+embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 # Configuración
 INDEX_DIR = "base_vectorial"
 INDEX_NAME = "index"
