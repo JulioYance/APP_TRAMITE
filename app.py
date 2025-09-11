@@ -17,7 +17,7 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.json
+    data = request.get_json(force=True, silent=True) or {}
     question = data.get("question", "")
 
     if not question:
