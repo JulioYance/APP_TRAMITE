@@ -17,18 +17,22 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    # Intentar parsear el JSON de la request
-    data = request.get_json(force=True, silent=True)
-
-    if not data or "question" not in data:
-        return jsonify({
-            "error": "Falta el campo 'question'",
-            "raw": request.data.decode("utf-8")  # 🔎 Para depuración
-        }), 400
-
-    question = data["question"]
-
     try:
+        # Forzar que se interprete siempre como JSON
+        data = request.get_json(force=True)
+
+        # Debug temporal: imprime lo que llega
+        print("📥 RAW request.data:", request.data)
+        print("📥 Parsed JSON:", data)
+
+        if not data or "question" not in data:
+            return jsonify({
+                "error": "Falta el campo 'question'",
+                "raw": request.data.decode("utf-8")
+            }), 400
+
+        question = data["question"]
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -36,6 +40,7 @@ def chat():
                 {"role": "user", "content": question},
             ]
         )
+
         answer = response.choices[0].message.content
         return jsonify({"answer": answer})
 
