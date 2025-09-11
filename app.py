@@ -19,14 +19,12 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        # Intentar decodificar el cuerpo como UTF-8
+        # Manejo robusto de encoding (UTF-8 y Latin-1)
         try:
             raw_text = request.data.decode("utf-8")
         except UnicodeDecodeError:
-            # Si falla, usar Latin-1 (común en Windows / MIT App Inventor)
             raw_text = request.data.decode("latin-1")
 
-        # Parsear a JSON
         try:
             data = json.loads(raw_text)
         except Exception:
@@ -36,19 +34,30 @@ def chat():
         if not question:
             return jsonify({"error": "Falta el campo 'question'"}), 400
 
-        # Llamar a OpenAI
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Eres un asistente útil."},
-                {"role": "user", "content": question},
-            ]
-        )
-        answer = response.choices[0].message.content
-        return jsonify({"answer": answer})
+        # Intentar respuesta real con OpenAI
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres un asistente útil."},
+                    {"role": "user", "content": question},
+                ]
+            )
+            answer = response.choices[0].message.content
+            return jsonify({"answer": answer})
+
+        except Exception as e:
+            # Si es error de cuota, devolver respuesta simulada
+            if "insufficient_quota" in str(e):
+                return jsonify({
+                    "answer": f"(Respuesta simulada) Recibí tu pregunta: '{question}'. Tu API Key no tiene crédito disponible."
+                })
+            # Otros errores
+            return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
