@@ -17,11 +17,16 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json(force=True, silent=True) or {}
-    question = data.get("question", "")
+    # Intentar parsear el JSON de la request
+    data = request.get_json(force=True, silent=True)
 
-    if not question:
-        return jsonify({"error": "Falta el campo 'question'"}), 400
+    if not data or "question" not in data:
+        return jsonify({
+            "error": "Falta el campo 'question'",
+            "raw": request.data.decode("utf-8")  # 🔎 Para depuración
+        }), 400
+
+    question = data["question"]
 
     try:
         response = client.chat.completions.create(
