@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import os
+import json
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -18,13 +19,17 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        # Forzar que se interprete siempre como JSON
-        data = request.get_json(force=True)
+        # Intentar parsear como JSON
+        data = request.get_json(silent=True)
 
-        # Debug temporal: imprime lo que llega
-        print("📥 RAW request.data:", request.data)
-        print("📥 Parsed JSON:", data)
+        # Si falla, intentar manualmente
+        if not data:
+            try:
+                data = json.loads(request.data.decode("utf-8"))
+            except:
+                data = {}
 
+        # Validar campo 'question'
         if not data or "question" not in data:
             return jsonify({
                 "error": "Falta el campo 'question'",
@@ -33,6 +38,7 @@ def chat():
 
         question = data["question"]
 
+        # Llamar a OpenAI
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -46,6 +52,7 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
