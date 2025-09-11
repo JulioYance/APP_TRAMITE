@@ -19,24 +19,22 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        # Intentar parsear como JSON
-        data = request.get_json(silent=True)
+        # Intentar decodificar el cuerpo como UTF-8
+        try:
+            raw_text = request.data.decode("utf-8")
+        except UnicodeDecodeError:
+            # Si falla, usar Latin-1 (común en Windows / MIT App Inventor)
+            raw_text = request.data.decode("latin-1")
 
-        # Si falla, intentar manualmente
-        if not data:
-            try:
-                data = json.loads(request.data.decode("utf-8"))
-            except:
-                data = {}
+        # Parsear a JSON
+        try:
+            data = json.loads(raw_text)
+        except Exception:
+            return jsonify({"error": "El cuerpo no es un JSON válido"}), 400
 
-        # Validar campo 'question'
-        if not data or "question" not in data:
-            return jsonify({
-                "error": "Falta el campo 'question'",
-                "raw": request.data.decode("utf-8")
-            }), 400
-
-        question = data["question"]
+        question = data.get("question", "").strip()
+        if not question:
+            return jsonify({"error": "Falta el campo 'question'"}), 400
 
         # Llamar a OpenAI
         response = client.chat.completions.create(
@@ -46,13 +44,11 @@ def chat():
                 {"role": "user", "content": question},
             ]
         )
-
         answer = response.choices[0].message.content
         return jsonify({"answer": answer})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
