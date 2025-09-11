@@ -1,33 +1,32 @@
 import os
-import fitz  # PyMuPDF
-from docx import Document
-from bs4 import BeautifulSoup
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.docstore.document import Document
+from langchain_community.document_loaders import PyPDFLoader
 
-def extraer_texto_pdf(ruta):
-    doc = fitz.open(ruta)
-    return "\n".join([pagina.get_text() for pagina in doc])
+def procesar_documentos(api_key: str, carpeta="documentos", carpeta_index="faiss_index"):
+    documentos = []
 
-def extraer_texto_docx(ruta):
-    doc = Document(ruta)
-    return "\n".join([p.text for p in doc.paragraphs])
-
-def extraer_texto_html(ruta):
-    with open(ruta, "r", encoding="utf-8") as f:
-        soup = BeautifulSoup(f.read(), "html.parser")
-    return soup.get_text()
-
-def procesar_documentos(carpeta="documentos"):
-    textos = []
+    # Leer todos los PDFs en la carpeta
     for archivo in os.listdir(carpeta):
-        ruta = os.path.join(carpeta, archivo)
-        ext = os.path.splitext(archivo)[1].lower()
-        try:
-            if ext == ".pdf":
-                textos.append(extraer_texto_pdf(ruta))
-            elif ext == ".docx":
-                textos.append(extraer_texto_docx(ruta))
-            elif ext == ".html":
-                textos.append(extraer_texto_html(ruta))
-        except Exception as e:
-            print(f"Error en {archivo}: {e}")
-    return "\n".join(textos)
+        if archivo.endswith(".pdf"):
+            ruta = os.path.join(carpeta, archivo)
+            loader = PyPDFLoader(ruta)
+            documentos.extend(loader.load())
+
+    if not documentos:
+        raise ValueError("❌ No se encontraron documentos PDF en la carpeta.")
+
+    # Dividir en fragmentos
+    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    fragmentos = splitter.split_documents(documentos)
+
+    # Crear embeddings y FAISS
+    embeddings = OpenAIEmbeddings(api_key=api_key)
+    db = FAISS.from_documents(fragmentos, embeddings)
+
+    # Guardar el índice
+    db.save_local(carpeta_index)
+
+    return db
