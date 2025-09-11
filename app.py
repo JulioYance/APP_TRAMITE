@@ -1,62 +1,41 @@
+from flask import Flask, request, jsonify
 import os
-from flask import Flask, jsonify
-from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+from openai import OpenAI
 
 app = Flask(__name__)
-# Tomamos la API Key desde el entorno
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise ValueError("❌ No se encontró la variable OPENAI_API_KEY. Configúrala antes de ejecutar.")
 
-# Pasamos la API Key explícitamente a OpenAIEmbeddings
-embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-# Configuración
-INDEX_DIR = "base_vectorial"
-INDEX_NAME = "index"
-INDEX_FILE = os.path.join(INDEX_DIR, f"{INDEX_NAME}.faiss")
+# Leer la API key desde Railway
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("❌ No se encontró la variable OPENAI_API_KEY en Railway")
 
-# Embeddings
-embeddings = OpenAIEmbeddings()
-
-# Función robusta para cargar o crear FAISS
-def load_or_create_faiss():
-    try:
-        # Si no existe o está vacío, creamos uno nuevo
-        if not os.path.exists(INDEX_FILE) or os.path.getsize(INDEX_FILE) == 0:
-            os.makedirs(INDEX_DIR, exist_ok=True)
-            print("⚠️ Índice no encontrado o vacío. Creando uno nuevo...")
-            faiss_index = FAISS.from_texts(["Índice inicializado"], embeddings)
-            faiss_index.save_local(INDEX_DIR, index_name=INDEX_NAME)
-            return faiss_index
-
-        # Intentamos cargar el índice existente
-        print("✅ Cargando índice existente...")
-        return FAISS.load_local(INDEX_DIR, embeddings, index_name=INDEX_NAME, allow_dangerous_deserialization=True)
-
-    except Exception as e:
-        print(f"❌ Error cargando índice: {e}")
-        print("🔄 Creando índice nuevo...")
-        faiss_index = FAISS.from_texts(["Índice reinicializado"], embeddings)
-        faiss_index.save_local(INDEX_DIR, index_name=INDEX_NAME)
-        return faiss_index
-
-
-# Inicializamos FAISS
-vectorstore = load_or_create_faiss()
-
+client = OpenAI(api_key=api_key)
 
 @app.route("/")
 def home():
-    return jsonify({"message": "Servidor Flask con FAISS funcionando 🚀"})
+    return "✅ API funcionando en Railway"
 
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.json
+    question = data.get("question", "")
 
-@app.route("/buscar/<texto>")
-def buscar(texto):
-    docs = vectorstore.similarity_search(texto, k=2)
-    resultados = [doc.page_content for doc in docs]
-    return jsonify({"query": texto, "resultados": resultados})
+    if not question:
+        return jsonify({"error": "Falta el campo 'question'"}), 400
 
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Eres un asistente útil."},
+                {"role": "user", "content": question},
+            ]
+        )
+        answer = response.choices[0].message.content
+        return jsonify({"answer": answer})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
